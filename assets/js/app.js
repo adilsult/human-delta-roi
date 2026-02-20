@@ -132,18 +132,11 @@ function deriveConflictRate() {
   return Math.max(3, cr);
 }
 
-/** Escalation rate proxy: p(escalate | wrong) ≈ ticketsAfterAI / wrongTagged. */
+/** Deflection failure rate = tickets after AI / AI convos. */
 function deriveEscRate() {
-  const wrongTagged = gd('g-wrong-tickets');
-  const ticketsAfterAi = gd('g-ai-tickets');
-  if (wrongTagged > 0) {
-    return Math.min(80, Math.max(1, Math.round((ticketsAfterAi / wrongTagged) * 100)));
-  }
-
-  // Fallback when wrong-tagging is unavailable.
   const convos = Math.max(gd('g-ai-convos'), 1);
-  const proxy = ticketsAfterAi / convos * 100;
-  return Math.min(80, Math.max(1, Math.round(proxy)));
+  const ticketsAfterAi = gd('g-ai-tickets');
+  return Math.min(80, Math.max(1, Math.round((ticketsAfterAi / convos) * 100)));
 }
 
 /**
@@ -172,10 +165,16 @@ function deriveChurnRate() {
   const qpc    = 200; // default assumption for guided mode
   const impacted = Math.min(custs, badPerYear / qpc);
   const mentions = gd('g-churn-mentions');
+  const totalChurned = gd('g-total-churned');
   const annualizedMentions = mentions * 2;
-  const rate = impacted > 0
-    ? Math.min(80, Math.round(annualizedMentions / impacted * 100))
-    : 5;
+  const annualizedTotalChurned = totalChurned * 2;
+
+  // Use total churned to compute an AI-attribution share, then apply it to exposure risk.
+  const aiAttrShare = annualizedTotalChurned > 0
+    ? Math.min(1, annualizedMentions / annualizedTotalChurned)
+    : 1;
+  const exposureRisk = impacted > 0 ? (annualizedMentions / impacted) : 0.05;
+  const rate = Math.min(80, Math.round(exposureRisk * aiAttrShare * 100));
   return Math.max(1, rate);
 }
 
@@ -402,11 +401,11 @@ function computeCost(crPct, ovVal, ovDim) {
 
   // Explicit funnel:
   // p_wrong = conflictRate × hallRate_given_conflict
-  // escalations = annualQueries × p_wrong × p_escalate_given_wrong
+  // escalations follow Deflection Failure Rate over all AI sessions (Variant A).
   const annualQueries = dailyQ * 365;
   const pWrong = cr * hallR;
   const wrongPerYear = annualQueries * pWrong;
-  const escalations = wrongPerYear * escR;
+  const escalations = annualQueries * escR;
   const exposed = Math.min(custs, wrongPerYear / qpcExposure) * distMult;
   const churned = exposed * chR * attrW;
 
@@ -585,7 +584,7 @@ function exportSummary() {
     '[ INPUTS ]',
     '  Conflict Rate:                    ' + gv('conflictRate') + '%',
     '  Hallucination Rate:               ' + gv('hallRate')     + '%',
-    '  Escalation Rate:                  ' + gv('escRate')      + '%',
+    '  Deflection Failure Rate:          ' + gv('escRate')      + '%',
     '  AI-Attributable Churn Rate:       ' + gv('churnRate')    + '%',
     '  Daily AI Queries:                 ' + gv('dailyQ').toLocaleString(),
     '  Total Customers:                  ' + gv('customers'),

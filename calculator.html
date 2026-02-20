@@ -245,12 +245,12 @@
       <div class="dparam">
         <div class="dparam-name">Hallucination Rate</div>
         <div class="dparam-val" id="d-hallrate">—</div>
-        <div class="dparam-src">wrong-AI tickets × silent multiplier ÷ AI convos</div>
+        <div class="dparam-src">(wrong-AI tickets × silent multiplier ÷ AI convos) ÷ conflict rate</div>
       </div>
       <div class="dparam">
         <div class="dparam-name">AI-Attr. Churn Rate</div>
         <div class="dparam-val" id="d-churn">—</div>
-        <div class="dparam-src">AI churn mentions ÷ impacted customers</div>
+        <div class="dparam-src">(AI churn mentions ÷ impacted) × (AI churn mentions ÷ total churned)</div>
       </div>
       <div class="dparam">
         <div class="dparam-name">Daily AI Queries</div>
@@ -449,7 +449,7 @@
           badPerYear  = dailyQ × conflictRate × hallRate × 365<br>
           impacted    = min(customers, badPerYear÷qPerCust × distMult)<br>
           churnCost   = impacted × churnRate × ACV × revAtRisk%<br>
-          escalCost   = badPerYear × escRate × $/ticket<br>
+          escalCost   = dailyQ × escRate × 365 × $/ticket<br>
           reworkCost  = hrs/mo × 12 × rate × conflictCaused%<br>
           ROI(yr1)    = (savings − year1Total) ÷ year1Total
         </div>
