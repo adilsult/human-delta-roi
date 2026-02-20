@@ -16,12 +16,7 @@
 <!-- NAV -->
 <nav>
   <a href="index.html" class="nav-logo">
-    <div class="nav-logo-mark">
-      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3 8h10M8 3l5 5-5 5" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </div>
-    Human Delta
+    Human Delta AI
     <span style="font-size:11px;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent-border);padding:2px 8px;border-radius:100px;letter-spacing:0.5px;font-family:'Arimo',sans-serif;font-weight:500;margin-left:2px;">demo</span>
   </a>
   <a href="index.html" class="back-link">← Back to overview</a>
@@ -29,7 +24,6 @@
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-eyebrow">87% of enterprise knowledge bases contain contradictions</div>
   <h1>What Is Your<br><em>Broken KB</em> Costing?</h1>
   <p class="hero-sub">Your AI is only as good as the data it's built on. Enter what you know — we'll quantify what's silently breaking your AI before your customers find it first.</p>
 </div>
@@ -283,11 +277,10 @@
 
   <!-- Sanity check banner — shown when dailyQ×365 vs customers×qPerCust diverge >3× -->
   <div class="sanity-banner" id="sanity-banner">
-    <strong>⚠ Sanity Check:</strong>
-    Implied annual queries from Daily Q × 365 = <strong id="sanity-implied">—</strong>,
-    but Customer-derived annual queries (customers × q/cust) = <strong id="sanity-customer">—</strong>
-    — that's a <strong id="sanity-ratio">—</strong> divergence.
-    Consider aligning your daily query volume with your customer count and queries-per-customer before presenting.
+    <strong>Sanity hint:</strong>
+    Daily Q implies <span id="sanity-implied">—</span> annual queries, while customers × q/cust implies
+    <span id="sanity-customer">—</span> (<span id="sanity-ratio">—</span> difference).
+    Quick alignment here improves estimate quality.
   </div>
 
   <!-- INPUTS ROW 1 -->
