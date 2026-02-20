@@ -132,23 +132,34 @@ function deriveConflictRate() {
   return Math.max(3, cr);
 }
 
-/** Deflection Failure Rate: tickets after AI / AI convos */
+/** Escalation rate proxy: p(escalate | wrong) ≈ ticketsAfterAI / wrongTagged. */
 function deriveEscRate() {
-  const convos  = Math.max(gd('g-ai-convos'), 1);
-  const tickets = gd('g-ai-tickets');
-  return Math.min(80, Math.round(tickets / convos * 100));
+  const wrongTagged = gd('g-wrong-tickets');
+  const ticketsAfterAi = gd('g-ai-tickets');
+  if (wrongTagged > 0) {
+    return Math.min(80, Math.max(1, Math.round((ticketsAfterAi / wrongTagged) * 100)));
+  }
+
+  // Fallback when wrong-tagging is unavailable.
+  const convos = Math.max(gd('g-ai-convos'), 1);
+  const proxy = ticketsAfterAi / convos * 100;
+  return Math.min(80, Math.max(1, Math.round(proxy)));
 }
 
 /**
- * Hallucination Rate: wrong-AI tickets × silent multiplier / total AI convos
- * Silent multiplier accounts for users who don't file tickets (Forrester/Zendesk: 5–10×).
+ * Hallucination Rate GIVEN conflicted content.
+ * We align funnels with:
+ * p_wrong = conflictRate × hallRate_given_conflict
+ * so hallRate_given_conflict = p_wrong / conflictRate
  */
 function deriveHallRate() {
   const convos      = Math.max(gd('g-ai-convos'), 1);
   const wrong       = gd('g-wrong-tickets');
   const silentMult  = Math.max(gd('g-silent-mult'), 1);
-  const estimatedHall = wrong * silentMult;
-  return Math.min(95, Math.max(10, Math.round(estimatedHall / convos * 100)));
+  const conflictRate = deriveConflictRate() / 100;
+  const pWrong = (wrong * silentMult) / convos;
+  const hallGivenConflict = conflictRate > 0 ? (pWrong / conflictRate) * 100 : 10;
+  return Math.min(95, Math.max(10, Math.round(hallGivenConflict)));
 }
 
 /** AI-Attributable Churn Rate */
@@ -374,10 +385,11 @@ function setDim(d) {
 function computeCost(crPct, ovVal, ovDim) {
   const dailyQ  = gv('dailyQ');
   const custs   = gv('customers');
-  const qpc     = Math.max(gv('qPerCust'), 1);
+  const qpcExposure = Math.max(gv('qPerCust'), 1);
   const escC    = gv('escCost');
   const acv     = gv('acv');
   const rar     = gv('revAtRisk') / 100;
+  const attrW   = gv('attrWeight') / 100;
   const rH      = gv('reworkH');
   const rCaused = gv('reworkCaused') / 100;
   const rRate   = gv('reworkRate');
@@ -388,15 +400,25 @@ function computeCost(crPct, ovVal, ovDim) {
   const chR   = (ovDim === 'churn' ? ovVal : gv('churnRate')) / 100;
   const cr    = crPct / 100;
 
-  const badDay    = dailyQ * cr * hallR;
-  const badYear   = badDay * 365;
-  const impacted  = Math.min(custs, Math.min(custs, badYear / qpc) * distMult);
-  const churned   = impacted * chR;
-  const cEsc      = badYear * escR * escC;
-  const cCh       = churned * acv * rar; // attrWeight baked into churnRate derivation
+  // Explicit funnel:
+  // p_wrong = conflictRate × hallRate_given_conflict
+  // escalations = annualQueries × p_wrong × p_escalate_given_wrong
+  const annualQueries = dailyQ * 365;
+  const pWrong = cr * hallR;
+  const wrongPerYear = annualQueries * pWrong;
+  const escalations = wrongPerYear * escR;
+  const exposed = Math.min(custs, wrongPerYear / qpcExposure) * distMult;
+  const churned = exposed * chR * attrW;
+
+  const badDay = dailyQ * pWrong;
+  const cEsc = escalations * escC;
+  const cCh = churned * acv * rar;
   const cRw       = rH * 12 * rRate * rCaused;
 
-  return { badDay, impacted, escYear: badYear * escR, churned, cEsc, cCh, cRw, tot: cEsc + cCh + cRw };
+  return {
+    annualQueries, pWrong, wrongPerYear, badDay, impacted: exposed,
+    escYear: escalations, churned, cEsc, cCh, cRw, tot: cEsc + cCh + cRw
+  };
 }
 
 // ============================================================
@@ -563,11 +585,12 @@ function exportSummary() {
     '[ INPUTS ]',
     '  Conflict Rate:                    ' + gv('conflictRate') + '%',
     '  Hallucination Rate:               ' + gv('hallRate')     + '%',
-    '  Deflection Failure Rate:          ' + gv('escRate')      + '%',
+    '  Escalation Rate:                  ' + gv('escRate')      + '%',
     '  AI-Attributable Churn Rate:       ' + gv('churnRate')    + '%',
     '  Daily AI Queries:                 ' + gv('dailyQ').toLocaleString(),
     '  Total Customers:                  ' + gv('customers'),
     '  ACV per Customer:                 $' + gv('acv'),
+    '  Gross Profit at Risk:             ' + gv('revAtRisk') + '%',
     '  Cost per Escalation:              $' + gv('escCost'),
     '  KB Rework Hours/Month:            ' + gv('reworkH'),
     '  Hourly Rate:                      $' + gv('reworkRate'),
