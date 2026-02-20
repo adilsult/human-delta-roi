@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI KB ROI Calculator — Human Delta (Demo)</title>
+<meta name="description" content="A lightweight demo to quantify the cost of a broken AI knowledge base.">
+<meta property="og:title" content="AI KB ROI Calculator — Human Delta (Demo)">
+<meta property="og:description" content="24-hour audit framing, cost quantification, and sensitivity view in one clean demo.">
+<meta property="og:type" content="website">
+<link href="https://fonts.googleapis.com/css2?family=Hedvig+Letters+Serif:opsz@12..24&family=Arimo:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M3 8h10M8 3l5 5-5 5" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    Human Delta
+    <span style="font-size:11px;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent-border);padding:2px 8px;border-radius:100px;letter-spacing:0.5px;font-family:'Arimo',sans-serif;font-weight:500;margin-left:2px;">demo</span>
+  </div>
+  <span class="nav-pill">by Adil</span>
+</nav>
+
+<div class="land-hero">
+  <div class="land-eyebrow">AI Knowledge Base ROI Model</div>
+  <h1 class="land-title">AI KB ROI Calculator<br><em>Demo</em></h1>
+  <p class="land-sub">A short directional model for founder conversations.</p>
+
+  <div class="vprops">
+    <div class="vprop">
+      <div class="vprop-icon">1</div>
+      <div class="vprop-text">
+        <strong>24 hours audit</strong>
+        <span>Frame the quick audit promise in a founder-friendly way.</span>
+      </div>
+    </div>
+    <div class="vprop">
+      <div class="vprop-icon">2</div>
+      <div class="vprop-text">
+        <strong>Quantify cost</strong>
+        <span>Estimate annual exposure from escalations, churn, and rework.</span>
+      </div>
+    </div>
+    <div class="vprop">
+      <div class="vprop-icon">3</div>
+      <div class="vprop-text">
+        <strong>Sensitivity</strong>
+        <span>Stress-test assumptions across low/base/high scenarios.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-group">
+    <a href="calculator.html" class="btn-primary">Open ROI Calculator</a>
+    <button class="btn-secondary" id="copy-demo-btn" type="button" onclick="copyDemoLink()">Copy Demo Link</button>
+  </div>
+</div>
+
+<div class="land-footer">
+  <span>Prototype by Adil</span>
+  <span class="disclaimer">Directional model — validate with logs</span>
+</div>
+
+<script>
+function copyDemoLink() {
+  const url = window.location.href;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('copy-demo-btn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy Demo Link';
+      btn.classList.remove('copied');
+    }, 1800);
+  });
+}
+</script>
+</body>
+</html>
