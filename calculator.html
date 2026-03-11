@@ -22,12 +22,6 @@
   <a href="index.html" class="back-link">← Back to overview</a>
 </nav>
 
-<!-- HERO -->
-<div class="hero">
-  <h1>What Is Your<br><em>Broken KB</em> Costing?</h1>
-  <p class="hero-sub">Your AI is only as good as the data it's built on. Enter what you know — we'll quantify what's silently breaking your AI before your customers find it first.</p>
-</div>
-
 <div class="divider"></div>
 
 <!-- INDUSTRY PRESETS -->
@@ -108,7 +102,7 @@
         <div class="step-num">2</div>
         <div>
           <div class="step-title">Support Ticket Signal</div>
-          <div class="step-desc">These answer: "How often does bad AI fail to contain the user?" → derives <strong>Deflection Failure Rate</strong> and <strong>Hallucination Rate</strong></div>
+          <div class="step-desc">These answer: "How often does bad AI fail to contain the user?" → derives <strong>Escalation Rate</strong> and <strong>Hallucination Rate</strong></div>
           <div class="step-source">📊 Where to find this: Zendesk / Intercom / Freshdesk — filter last 30 days, tag "AI chat escalation".</div>
         </div>
       </div>
@@ -127,6 +121,11 @@
           <label>Of those tickets, how many explicitly mention wrong / incorrect AI answer?</label>
           <input type="number" id="g-wrong-tickets" value="290" min="0">
           <div class="qhint">Search tickets for: "wrong", "incorrect", "AI said", "that's not right"</div>
+        </div>
+        <div class="qfield">
+          <label>Avg AI queries per customer (per year)</label>
+          <input type="number" id="g-qpc" value="200" min="1" step="10">
+          <div class="qhint">Use product analytics (Amplitude, Mixpanel, etc.) to see how often an account hits AI each year</div>
         </div>
         <div class="qfield">
           <!-- Tooltip on Silent Multiplier -->
@@ -238,9 +237,9 @@
         <div class="dparam-src" id="d-conflict-src">stale% × process factor × contributor factor</div>
       </div>
       <div class="dparam">
-        <div class="dparam-name">Deflection Failure Rate</div>
+        <div class="dparam-name">Escalation Rate (Given Bad AI)</div>
         <div class="dparam-val" id="d-escrate">—</div>
-        <div class="dparam-src">tickets after AI ÷ AI convos</div>
+        <div class="dparam-src">tickets after AI ÷ (wrong-AI mentions × silent multiplier)</div>
       </div>
       <div class="dparam">
         <div class="dparam-name">Hallucination Rate</div>
@@ -277,10 +276,10 @@
 
   <!-- Sanity check banner — shown when dailyQ×365 vs customers×qPerCust diverge >3× -->
   <div class="sanity-banner" id="sanity-banner">
-    <strong>Sanity hint:</strong>
+    <strong>Low-confidence warning:</strong>
     Daily Q implies <span id="sanity-implied">—</span> annual queries, while customers × q/cust implies
     <span id="sanity-customer">—</span> (<span id="sanity-ratio">—</span> difference).
-    Quick alignment here improves estimate quality.
+    Results are low confidence until these annual query estimates are aligned.
   </div>
 
   <!-- INPUTS ROW 1 -->
@@ -290,7 +289,7 @@
 
       <div class="field">
         <label>Daily AI Queries <span class="auto-badge" id="badge-dailyQ" style="display:none">auto-filled</span></label>
-        <div class="iw"><input type="number" class="exp" id="dailyQ" value="5000" min="1" step="100"></div>
+        <div class="iw"><input type="number" class="exp" id="dailyQ" value="400" min="1" step="100"></div>
         <div class="hint">Total AI queries per day</div>
       </div>
 
@@ -303,6 +302,7 @@
         <!-- Tooltip on qPerCust -->
         <label class="tip-wrap">
           Avg Queries per Customer per Year
+          <span class="auto-badge" id="badge-qpc" style="display:none">auto-filled</span>
           <span class="tip-icon" tabindex="0">i</span>
           <span class="tip-box">Used alongside Daily Queries to estimate how many unique customers are exposed to bad AI responses. If this diverges greatly from dailyQ×365/customers, the sanity check will flag it.</span>
         </label>
@@ -326,18 +326,18 @@
       <div class="hint" id="dist-hint" style="margin-top:-10px;margin-bottom:16px;">Assumes bad responses spread evenly across users (rough estimate)</div>
 
       <div class="sf">
-        <div class="sh"><span class="sl">% Queries Hitting Conflicted Content <span class="auto-badge" id="badge-cr" style="display:none">auto</span></span><span class="sv" id="dv-cr">17%</span></div>
-        <input type="range" id="conflictRate" min="1" max="90" value="17">
+        <div class="sh"><span class="sl">% Queries Hitting Conflicted Content <span class="auto-badge" id="badge-cr" style="display:none">auto</span></span><span class="sv" id="dv-cr">12%</span></div>
+        <input type="range" id="conflictRate" min="1" max="90" value="12">
         <div class="hint" style="margin-top:6px">Typical range 12–30%</div>
       </div>
       <div class="sf">
-        <div class="sh"><span class="sl">Hallucination Rate on Conflicted Content <span class="auto-badge" id="badge-hr" style="display:none">auto</span></span><span class="sv" id="dv-hr">60%</span></div>
-        <input type="range" id="hallRate" min="10" max="95" value="60">
+        <div class="sh"><span class="sl">Hallucination Rate on Conflicted Content <span class="auto-badge" id="badge-hr" style="display:none">auto</span></span><span class="sv" id="dv-hr">35%</span></div>
+        <input type="range" id="hallRate" min="5" max="95" value="35">
       </div>
       <div class="sf">
-        <div class="sh"><span class="sl">Deflection Failure Rate <span style="font-size:10px;color:var(--dim2);font-style:italic">(tickets after AI ÷ AI sessions)</span> <span class="auto-badge" id="badge-er" style="display:none">auto</span></span><span class="sv" id="dv-er">30%</span></div>
-        <input type="range" id="escRate" min="1" max="80" value="30">
-        <div class="hint" style="margin-top:6px">% AI sessions that failed and led to a support ticket.</div>
+        <div class="sh"><span class="sl">Escalation Rate on Bad AI Responses <span style="font-size:10px;color:var(--dim2);font-style:italic">(tickets after AI ÷ estimated bad responses)</span> <span class="auto-badge" id="badge-er" style="display:none">auto</span></span><span class="sv" id="dv-er">15%</span></div>
+        <input type="range" id="escRate" min="1" max="80" value="15">
+        <div class="hint" style="margin-top:6px">% bad AI responses that escalate to a support ticket.</div>
       </div>
     </div>
 
@@ -354,8 +354,8 @@
         <div class="iw"><span class="pfx">$</span><input type="number" class="exp pl" id="acv" value="1200" min="0"></div>
       </div>
       <div class="sf">
-        <div class="sh"><span class="sl">% Revenue at Risk per Churned Customer</span><span class="sv" id="dv-rar">100%</span></div>
-        <input type="range" id="revAtRisk" min="10" max="100" value="100" step="5">
+        <div class="sh"><span class="sl">% Revenue at Risk per Churned Customer</span><span class="sv" id="dv-rar">70%</span></div>
+        <input type="range" id="revAtRisk" min="10" max="100" value="70" step="5">
         <div class="hint" style="margin-top:6px">Set below 100% for downgrades / partial churn. Source: OpenView SaaS Benchmarks.</div>
       </div>
       <div class="sf">
@@ -366,14 +366,14 @@
             <span class="tip-icon" tabindex="0">i</span>
             <span class="tip-box">Customers churn for many reasons. This slider lets you stress-test how sensitive the model is to your churn attribution assumption — already reflected in your Churn Rate input above. Use 15–30% as a conservative CFO assumption.</span>
           </span>
-          <span class="sv" id="dv-aw">15%</span>
+          <span class="sv" id="dv-aw">20%</span>
         </div>
-        <input type="range" id="attrWeight" min="5" max="100" value="15" step="5">
-        <div class="hint" style="margin-top:6px">Display-only signal — baked into churnRate derivation above.</div>
+        <input type="range" id="attrWeight" min="5" max="100" value="20" step="5">
+        <div class="hint" style="margin-top:6px">Applied as a conservative multiplier on churn cost.</div>
       </div>
       <div class="sf">
-        <div class="sh"><span class="sl">AI-Attributable Churn Rate (of impacted) <span class="auto-badge" id="badge-ch" style="display:none">auto</span></span><span class="sv" id="dv-ch">15%</span></div>
-        <input type="range" id="churnRate" min="1" max="80" value="15">
+        <div class="sh"><span class="sl">AI-Attributable Churn Rate (of impacted) <span class="auto-badge" id="badge-ch" style="display:none">auto</span></span><span class="sv" id="dv-ch">4%</span></div>
+        <input type="range" id="churnRate" min="0" max="80" value="4">
         <div class="hint" style="margin-top:6px">% of exposed customers at risk of churning due to bad AI</div>
       </div>
       <div class="field">
@@ -381,8 +381,8 @@
         <div class="iw"><input type="number" class="exp" id="reworkH" value="80" min="0"></div>
       </div>
       <div class="sf">
-        <div class="sh"><span class="sl">% Rework Caused by Conflicts <span class="auto-badge" id="badge-rc" style="display:none">auto</span></span><span class="sv" id="dv-rc">60%</span></div>
-        <input type="range" id="reworkCaused" min="10" max="100" value="60">
+        <div class="sh"><span class="sl">% Rework Caused by Conflicts <span class="auto-badge" id="badge-rc" style="display:none">auto</span></span><span class="sv" id="dv-rc">35%</span></div>
+        <input type="range" id="reworkCaused" min="5" max="100" value="35">
         <div class="hint" style="margin-top:6px">What % of KB maintenance is caused by conflicting/outdated content? Source: Panopto Workplace Knowledge Report.</div>
       </div>
       <div class="field">
@@ -410,20 +410,20 @@
       <div class="ptitle">Recovery Scenario</div>
       <p style="font-size:13px;color:var(--dim);margin-bottom:14px;line-height:1.6">How much of the annual cost is recoverable after resolving conflicts?</p>
       <div class="prow">
-        <button class="pb-btn" id="pr-cons" onclick="setPreset('conservative')">Conservative<br><span style="font-size:10px;opacity:.6">50/35/50%</span></button>
-        <button class="pb-btn on" id="pr-base" onclick="setPreset('base')">Base Case<br><span style="font-size:10px;opacity:.6">70/55/65%</span></button>
+        <button class="pb-btn on" id="pr-cons" onclick="setPreset('conservative')">Conservative<br><span style="font-size:10px;opacity:.6">50/35/50%</span></button>
+        <button class="pb-btn" id="pr-base" onclick="setPreset('base')">Base Case<br><span style="font-size:10px;opacity:.6">70/55/65%</span></button>
         <button class="pb-btn" id="pr-agg" onclick="setPreset('aggressive')">Aggressive<br><span style="font-size:10px;opacity:.6">90/75/85%</span></button>
       </div>
       <div class="rdisplay">
-        <div>Escalation: <span style="color:var(--green)" id="r-esc">70%</span></div>
-        <div>Churn: <span style="color:var(--green)" id="r-ch">55%</span></div>
-        <div>Rework: <span style="color:var(--green)" id="r-rw">65%</span></div>
+        <div>Escalation: <span style="color:var(--green)" id="r-esc">50%</span></div>
+        <div>Churn: <span style="color:var(--green)" id="r-ch">35%</span></div>
+        <div>Rework: <span style="color:var(--green)" id="r-rw">50%</span></div>
       </div>
     </div>
   </div>
 
   <!-- OUTPUT -->
-  <div class="g2">
+  <div class="g2" id="expert-results">
     <div class="out-panel">
       <div class="ptitle">Cost of Broken AI</div>
       <div class="mgrid">
@@ -448,13 +448,13 @@
         <div class="fline">
           badPerYear  = dailyQ × conflictRate × hallRate × 365<br>
           impacted    = min(customers, badPerYear÷qPerCust × distMult)<br>
-          churnCost   = impacted × churnRate × ACV × revAtRisk%<br>
-          escalCost   = dailyQ × escRate × 365 × $/ticket<br>
+          churnCost   = min(impacted × churnRate, annualChurnCap) × ACV × revAtRisk% × attrWeight%<br>
+          escalCost   = badPerYear × escRate × $/ticket<br>
           reworkCost  = hrs/mo × 12 × rate × conflictCaused%<br>
           ROI(yr1)    = (savings − year1Total) ÷ year1Total
         </div>
       </div>
-      <div class="note">ℹ "AI-Attributable Churn" = customers at risk estimate, not confirmed logo loss. Validate with retention data before CFO presentation.</div>
+      <div class="note">ℹ "AI-Attributable Churn" = customers at risk estimate, not confirmed logo loss. Churn cost is weighted by AI attribution and capped by observed churn where provided.</div>
     </div>
 
     <div class="panel">
@@ -470,7 +470,7 @@
         </div>
       </div>
       <div class="bk">
-        <div class="bkt">Recoverable Savings (<span id="preset-lbl">Base Case</span>)</div>
+        <div class="bkt">Recoverable Savings (<span id="preset-lbl">Conservative</span>)</div>
         <div class="bkr"><span class="d">Escalations Prevented</span><span class="v" style="color:var(--green)" id="sv-esc">—</span></div>
         <div class="bkr"><span class="d">Churn Revenue Recovered</span><span class="v" style="color:var(--green)" id="sv-ch">—</span></div>
         <div class="bkr"><span class="d">Rework Hours Freed</span><span class="v" style="color:var(--green)" id="sv-rw">—</span></div>
@@ -501,7 +501,7 @@
       <div class="topts">
         <button class="topt on" id="dim-churn" onclick="setDim('churn')">Churn Rate</button>
         <button class="topt"    id="dim-hall"  onclick="setDim('hall')">Hallucination Rate</button>
-        <button class="topt"    id="dim-esc"   onclick="setDim('esc')">Deflection Failure Rate</button>
+        <button class="topt"    id="dim-esc"   onclick="setDim('esc')">Escalation Rate</button>
       </div>
       <span style="font-size:12px;color:var(--dim2);font-family:'Arimo',monospace;">vs Conflict Rate (X-axis)</span>
     </div>
@@ -526,11 +526,11 @@
     <div style="flex:1;min-width:240px;">
       <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Ready to see real numbers?</div>
       <div style="font-family:'Hedvig Letters Serif',serif;font-size:26px;font-weight:400;color:var(--text);line-height:1.25;margin-bottom:12px;">Clean data in,<br>trusted AI out.</div>
-      <p style="font-size:14px;color:var(--dim);line-height:1.7;max-width:400px;">Human Delta scans your actual knowledge base and finds exactly what's causing your AI to fail — in under 24 hours. No internal data required.</p>
+      <p style="font-size:14px;color:var(--dim);line-height:1.7;max-width:400px;">Human Delta scans your knowledge base and highlights what is causing AI failures — in under 24 hours.</p>
       <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;">
         <div style="font-size:13px;color:var(--dim);display:flex;align-items:center;gap:8px;"><span style="color:var(--accent)">✓</span> Results in under 24 hours</div>
         <div style="font-size:13px;color:var(--dim);display:flex;align-items:center;gap:8px;"><span style="color:var(--accent)">✓</span> Customized strategy report</div>
-        <div style="font-size:13px;color:var(--dim);display:flex;align-items:center;gap:8px;"><span style="color:var(--accent)">✓</span> No internal information needed</div>
+        <div style="font-size:13px;color:var(--dim);display:flex;align-items:center;gap:8px;"><span style="color:var(--accent)">✓</span> Works with existing support, CRM, and KB metrics</div>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:center;gap:14px;min-width:200px;">
@@ -540,7 +540,7 @@
         <div style="font-size:11px;color:var(--dim2);margin-top:4px;">per year · adjust inputs above</div>
       </div>
       <a href="https://humandelta.ai/#contact" target="_blank" rel="noopener" style="display:block;width:100%;background:var(--accent);color:var(--bg);font-family:'Arimo',sans-serif;font-size:15px;font-weight:600;padding:15px 24px;border-radius:10px;text-align:center;text-decoration:none;transition:background .2s;letter-spacing:0.2px;" onmouseover="this.style.background='#3d7de8'" onmouseout="this.style.background='var(--accent)'">Start Your Free Audit →</a>
-      <div style="font-size:11px;color:var(--dim2);text-align:center;line-height:1.6;">Trusted by Disney, ESPN &amp; Fortune 500</div>
+      <div style="font-size:11px;color:var(--dim2);text-align:center;line-height:1.6;">Built for enterprise AI discovery and audit planning</div>
     </div>
   </div>
 

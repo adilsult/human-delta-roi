@@ -11,7 +11,7 @@ const PRESETS = {
   base:         { e: .70, c: .55, r: .65, l: 'Base Case'    },
   aggressive:   { e: .90, c: .75, r: .85, l: 'Aggressive'   },
 };
-let preset = PRESETS.base;
+let preset = PRESETS.conservative;
 
 // ── Usage-distribution multipliers ──────────────────────────
 const DIST = { uniform: 1.0, concentrated: 0.6, distributed: 1.3 };
@@ -19,6 +19,7 @@ let distMult = 1.0;
 
 // ── Sensitivity dimension ────────────────────────────────────
 let sensDim = 'churn';
+let confidenceFlag = 'OK';
 
 // ── KB review process (guided mode) ─────────────────────────
 let reviewProcess = 'no';
@@ -28,18 +29,21 @@ const IND_PRESETS = {
   smb: {
     articles: 200,  stale: 80,   contrib: 3,  convos: 3000,  tickets: 180,
     wrong: 60,      mult: 7,     ticketCost: 35,  customers: 150,  acv: 800,
+    qpc: 180,
     churnMentions: 3,  totalChurned: 15,  kbHours: 20,  kbRate: 40,
     platform: 800,  setup: 2000,
   },
   mid: {
     articles: 600,  stale: 250,  contrib: 10, convos: 18000, tickets: 1200,
     wrong: 420,     mult: 7,     ticketCost: 50,  customers: 1200, acv: 8000,
+    qpc: 260,
     churnMentions: 18, totalChurned: 80,   kbHours: 60,  kbRate: 65,
     platform: 5000, setup: 10000,
   },
   ent: {
     articles: 2000, stale: 900,  contrib: 30, convos: 80000, tickets: 5600,
     wrong: 2000,    mult: 7,     ticketCost: 75,  customers: 400,  acv: 60000,
+    qpc: 380,
     churnMentions: 12, totalChurned: 30,   kbHours: 200, kbRate: 90,
     platform: 15000, setup: 25000,
   },
@@ -129,14 +133,28 @@ function deriveConflictRate() {
   const contribFactor = contrib <= 2 ? 0.8 : contrib <= 5 ? 1.0 : contrib <= 10 ? 1.15 : 1.3;
   const processFactor = { no: 1.3, informal: 1.0, formal: 0.65 }[reviewProcess];
   const cr = Math.min(90, Math.round(stalePct * 100 * contribFactor * processFactor * 0.55));
-  return Math.max(3, cr);
+  return Math.max(1, cr);
 }
 
-/** Deflection failure rate = tickets after AI / AI convos. */
+/**
+ * Escalation rate GIVEN a bad AI response.
+ * Primary derivation:
+ *   tickets after AI / estimated bad AI responses
+ * where estimated bad responses = wrong-ticket mentions × silent multiplier.
+ * Fallback: tickets after AI / AI convos when wrong-ticket signal is missing.
+ */
 function deriveEscRate() {
   const convos = Math.max(gd('g-ai-convos'), 1);
-  const ticketsAfterAi = gd('g-ai-tickets');
-  return Math.min(80, Math.max(1, Math.round((ticketsAfterAi / convos) * 100)));
+  const ticketsAfterAi = Math.min(Math.max(gd('g-ai-tickets'), 0), convos);
+  const wrongTickets = Math.min(Math.max(gd('g-wrong-tickets'), 0), ticketsAfterAi);
+  const silentMult = Math.max(gd('g-silent-mult'), 1);
+
+  if (wrongTickets === 0) {
+    return Math.min(80, Math.max(1, Math.round((ticketsAfterAi / convos) * 100)));
+  }
+
+  const estBadResponses = Math.max(wrongTickets * silentMult, 1);
+  return Math.min(80, Math.max(1, Math.round((ticketsAfterAi / estBadResponses) * 100)));
 }
 
 /**
@@ -147,12 +165,13 @@ function deriveEscRate() {
  */
 function deriveHallRate() {
   const convos      = Math.max(gd('g-ai-convos'), 1);
-  const wrong       = gd('g-wrong-tickets');
+  const ticketsAfterAi = Math.min(Math.max(gd('g-ai-tickets'), 0), convos);
+  const wrong       = Math.min(Math.max(gd('g-wrong-tickets'), 0), ticketsAfterAi);
   const silentMult  = Math.max(gd('g-silent-mult'), 1);
   const conflictRate = deriveConflictRate() / 100;
   const pWrong = (wrong * silentMult) / convos;
   const hallGivenConflict = conflictRate > 0 ? (pWrong / conflictRate) * 100 : 10;
-  return Math.min(95, Math.max(10, Math.round(hallGivenConflict)));
+  return Math.min(95, Math.max(5, Math.round(hallGivenConflict)));
 }
 
 /** AI-Attributable Churn Rate */
@@ -162,7 +181,7 @@ function deriveChurnRate() {
   const dailyQ = gd('g-ai-convos') / 30;
   const badPerYear = dailyQ * cr * hr * 365;
   const custs  = Math.max(gd('g-customers'), 1);
-  const qpc    = 200; // default assumption for guided mode
+  const qpc    = Math.max(gd('g-qpc'), 1);
   const impacted = Math.min(custs, badPerYear / qpc);
   const mentions = gd('g-churn-mentions');
   const totalChurned = gd('g-total-churned');
@@ -174,15 +193,19 @@ function deriveChurnRate() {
     ? Math.min(1, annualizedMentions / annualizedTotalChurned)
     : 1;
   const exposureRisk = impacted > 0 ? (annualizedMentions / impacted) : 0.05;
-  const rate = Math.min(80, Math.round(exposureRisk * aiAttrShare * 100));
-  return Math.max(1, rate);
+  const rawRate = Math.min(80, exposureRisk * aiAttrShare * 100);
+  const capRate = (annualizedTotalChurned > 0 && impacted > 0)
+    ? (annualizedTotalChurned / impacted) * 100
+    : 80;
+  const rate = Math.min(rawRate, capRate);
+  return Math.max(0, Math.round(rate));
 }
 
 /** Rework caused by conflicts — proxy via stale article ratio */
 function deriveReworkCaused() {
   const total = Math.max(gd('g-total-articles'), 1);
   const stale = Math.min(gd('g-stale-articles'), total);
-  return Math.min(90, Math.max(20, Math.round(stale / total * 100 * 0.8)));
+  return Math.min(90, Math.max(5, Math.round(stale / total * 100 * 0.8)));
 }
 
 /** Update the "Derived Parameters" panel in guided mode */
@@ -214,31 +237,44 @@ function updateDerived() {
  * Sanity check in Expert Mode:
  * Compares implied annual queries (dailyQ × 365) with
  * customer-derived annual queries (customers × qPerCust).
- * Shows a non-blocking warning if they diverge > 3×.
+ * Flags low-confidence results when they diverge > 3×.
  */
 function runSanityCheck(dailyQOverride, crOverride, hrOverride) {
   // We run this in both modes; fall back to expert fields when not in guided context
   const dailyQ = dailyQOverride != null ? dailyQOverride : gv('dailyQ');
   const custs  = gv('customers') || gd('g-customers');
-  const qpc    = gv('qPerCust') || 200;
+  const qpc    = gv('qPerCust') || gd('g-qpc') || 200;
 
   const impliedAnnual   = dailyQ * 365;
   const customerAnnual  = custs * qpc;
 
   const bannerEl = document.getElementById('sanity-banner');
+  const outPanelEl = document.querySelector('#expert-results .out-panel');
   if (!bannerEl) return;
 
-  if (customerAnnual === 0 || impliedAnnual === 0) { bannerEl.style.display = 'none'; return; }
+  if (customerAnnual === 0 || impliedAnnual === 0) {
+    confidenceFlag = 'N/A';
+    bannerEl.style.display = 'none';
+    bannerEl.classList.remove('low-confidence');
+    if (outPanelEl) outPanelEl.classList.remove('low-confidence');
+    return;
+  }
 
   const ratio = Math.max(impliedAnnual, customerAnnual) / Math.min(impliedAnnual, customerAnnual);
 
   if (ratio > 3) {
+    confidenceFlag = 'LOW';
     bannerEl.style.display = 'block';
+    bannerEl.classList.add('low-confidence');
+    if (outPanelEl) outPanelEl.classList.add('low-confidence');
     document.getElementById('sanity-implied').textContent  = Math.round(impliedAnnual).toLocaleString();
     document.getElementById('sanity-customer').textContent = Math.round(customerAnnual).toLocaleString();
     document.getElementById('sanity-ratio').textContent    = ratio.toFixed(1) + '×';
   } else {
+    confidenceFlag = 'OK';
     bannerEl.style.display = 'none';
+    bannerEl.classList.remove('low-confidence');
+    if (outPanelEl) outPanelEl.classList.remove('low-confidence');
   }
 }
 
@@ -262,13 +298,14 @@ function deriveAndSwitch() {
   setSlider('reworkCaused', 'dv-rc', rw);
   setInput('dailyQ',      dailyQ,               'badge-dailyQ');
   setInput('customers',   gd('g-customers'),     'badge-customers');
+  setInput('qPerCust',    gd('g-qpc'),           'badge-qpc');
   setInput('escCost',     gd('g-ticket-cost'),   'badge-esc');
   setInput('acv',         gd('g-acv'),           'badge-acv');
   setInput('reworkH',     gd('g-kb-hours'),      'badge-rh');
   setInput('reworkRate',  gd('g-kb-rate'),       'badge-rate');
   setInput('moPlatform',  gd('g-mo-platform'),   'badge-mpl');
   setInput('setupCost',   gd('g-setup'),         'badge-setup');
-  setSlider('attrWeight', 'dv-aw', 15); // default CFO filter
+  setSlider('attrWeight', 'dv-aw', 20); // conservative CFO filter
 
   // Show auto badges on slider fields
   ['badge-cr', 'badge-hr', 'badge-er', 'badge-ch', 'badge-rc'].forEach(id => {
@@ -277,6 +314,23 @@ function deriveAndSwitch() {
   });
 
   setMode('expert');
+
+  const resultsEl = document.getElementById('expert-results');
+  if (resultsEl) {
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    const scrollToResults = (scrollBehavior) => {
+      const nav = document.querySelector('nav');
+      const navOffset = nav ? nav.offsetHeight : 0;
+      const top = resultsEl.getBoundingClientRect().top + window.pageYOffset - navOffset - 12;
+      window.scrollTo({ top: Math.max(0, top), behavior: scrollBehavior });
+    };
+
+    requestAnimationFrame(() => {
+      scrollToResults(behavior);
+      // Lock final position after section transition animation completes.
+      setTimeout(() => scrollToResults('auto'), 420);
+    });
+  }
 }
 
 function setSlider(id, dvId, val) {
@@ -313,7 +367,7 @@ function applyPreset(k) {
     'g-total-articles': p.articles, 'g-stale-articles': p.stale,
     'g-contributors':   p.contrib,  'g-ai-convos':      p.convos,
     'g-ai-tickets':     p.tickets,  'g-wrong-tickets':  p.wrong,
-    'g-silent-mult':    p.mult,     'g-ticket-cost':    p.ticketCost,
+    'g-qpc':            p.qpc,     'g-silent-mult':    p.mult,     'g-ticket-cost':    p.ticketCost,
     'g-customers':      p.customers,'g-acv':            p.acv,
     'g-churn-mentions': p.churnMentions, 'g-total-churned': p.totalChurned,
     'g-kb-hours':       p.kbHours,  'g-kb-rate':        p.kbRate,
@@ -401,22 +455,32 @@ function computeCost(crPct, ovVal, ovDim) {
 
   // Explicit funnel:
   // p_wrong = conflictRate × hallRate_given_conflict
-  // escalations follow Deflection Failure Rate over all AI sessions (Variant A).
+  // escalations are modeled on bad-response sessions only.
   const annualQueries = dailyQ * 365;
   const pWrong = cr * hallR;
   const wrongPerYear = annualQueries * pWrong;
-  const escalations = annualQueries * escR;
-  const exposed = Math.min(custs, wrongPerYear / qpcExposure) * distMult;
-  const churned = exposed * chR * attrW;
+  const escalations = wrongPerYear * escR;
+  const exposed = Math.min(custs, (wrongPerYear / qpcExposure) * distMult);
+  const churnedRaw = exposed * chR;
+  const factualAnnualChurnCap = Math.max(gd('g-total-churned') * 2, 0);
+  const churned = factualAnnualChurnCap > 0 ? Math.min(churnedRaw, factualAnnualChurnCap) : churnedRaw;
 
   const badDay = dailyQ * pWrong;
   const cEsc = escalations * escC;
-  const cCh = churned * acv * rar;
+  const cCh = churned * acv * rar * attrW;
   const cRw       = rH * 12 * rRate * rCaused;
 
   return {
     annualQueries, pWrong, wrongPerYear, badDay, impacted: exposed,
-    escYear: escalations, churned, cEsc, cCh, cRw, tot: cEsc + cCh + cRw
+    escYear: escalations,
+    churnedRaw,
+    churned,
+    churnCap: factualAnnualChurnCap,
+    churnCapApplied: factualAnnualChurnCap > 0 && churnedRaw > churned,
+    cEsc,
+    cCh,
+    cRw,
+    tot: cEsc + cCh + cRw
   };
 }
 
@@ -457,7 +521,10 @@ function calc() {
   if (ctaEl) ctaEl.textContent = fmt(res.tot);
 
   const descEl = document.getElementById('o-desc');
-  if (descEl) descEl.textContent = fmtN(res.impacted) + ' customers exposed · ' + fmtN(res.churned) + ' AI-attributable churn estimate';
+  if (descEl) {
+    const capNote = res.churnCapApplied ? ' · capped by observed churn' : '';
+    descEl.textContent = fmtN(res.impacted) + ' customers exposed · ' + fmtN(res.churned) + ' AI-attributable churn estimate' + capNote;
+  }
 
   // ── ROI strip ────────────────────────────────────────────
   anim('o-nab', (netBen >= 0 ? '+' : '') + fmt(netBen));
@@ -476,7 +543,7 @@ function calc() {
 
   // Attribution weight badge in breakdown
   const awBadge = document.getElementById('aw-badge');
-  if (awBadge) awBadge.textContent = '(' + gv('attrWeight') + '% attr.)';
+  if (awBadge) awBadge.textContent = '(' + gv('attrWeight') + '% weighted)';
 
   // ── Breakdown ────────────────────────────────────────────
   anim('br-esc', '–' + fmt(res.cEsc));
@@ -516,7 +583,8 @@ function buildSens() {
   }[sensDim];
 
   const base = gv(cfg.id);
-  const low  = Math.max(1, base * 0.5);
+  const lowFloor = cfg.id === 'churnRate' ? 0 : 1;
+  const low  = Math.max(lowFloor, base * 0.5);
   const high = Math.min(cfg.max, base * 1.7);
 
   document.getElementById('sh-corner').textContent = 'Conflict Rate →\n' + cfg.label + ' ↓';
@@ -561,6 +629,14 @@ function exportSummary() {
   const annPl  = moPl * 12;
   const totInv = annPl + setup;
   const ts     = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const distLabel = distMult === DIST.uniform
+    ? 'Uniform'
+    : distMult === DIST.concentrated
+      ? 'Concentrated'
+      : distMult === DIST.distributed
+        ? 'Distributed'
+        : 'Custom';
+  const annualChurnCap = Math.max(gd('g-total-churned') * 2, 0);
 
   const lines = [
     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
@@ -584,7 +660,7 @@ function exportSummary() {
     '[ INPUTS ]',
     '  Conflict Rate:                    ' + gv('conflictRate') + '%',
     '  Hallucination Rate:               ' + gv('hallRate')     + '%',
-    '  Deflection Failure Rate:          ' + gv('escRate')      + '%',
+    '  Escalation Rate (Given Bad AI):   ' + gv('escRate')      + '%',
     '  AI-Attributable Churn Rate:       ' + gv('churnRate')    + '%',
     '  Daily AI Queries:                 ' + gv('dailyQ').toLocaleString(),
     '  Total Customers:                  ' + gv('customers'),
@@ -596,6 +672,14 @@ function exportSummary() {
     '  Monthly Platform Cost:            $' + moPl,
     '  One-Time Setup Cost:              $' + setup,
     '  Recovery Scenario:                ' + preset.l,
+    '',
+    '[ ASSUMPTIONS USED ]',
+    '  Silent Failure Multiplier:        ' + gd('g-silent-mult') + 'x',
+    '  Usage Distribution:               ' + distLabel,
+    '  Recovery Preset:                  ' + preset.l,
+    '  AI Attribution Weight:            ' + gv('attrWeight') + '%',
+    '  Observed Annual Churn Cap:        ' + (annualChurnCap > 0 ? annualChurnCap.toLocaleString() : 'Not provided'),
+    '  Confidence Flag:                  ' + confidenceFlag,
     '',
     '[ COST BREAKDOWN ]',
     '  Support Escalation Cost:          ' + (document.getElementById('br-esc').textContent || '—'),
@@ -687,7 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Guided inputs → update derived panel
   [
     'g-total-articles', 'g-stale-articles', 'g-contributors',
-    'g-ai-convos', 'g-ai-tickets', 'g-wrong-tickets', 'g-silent-mult',
+    'g-ai-convos', 'g-ai-tickets', 'g-wrong-tickets', 'g-qpc', 'g-silent-mult',
     'g-ticket-cost', 'g-customers', 'g-acv', 'g-churn-mentions',
     'g-total-churned', 'g-kb-hours', 'g-kb-rate', 'g-mo-platform', 'g-setup',
   ].forEach(id => {

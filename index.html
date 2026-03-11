@@ -9,7 +9,7 @@
 <meta property="og:description" content="24-hour audit framing, cost quantification, and sensitivity view in one clean demo.">
 <meta property="og:type" content="website">
 <link href="https://fonts.googleapis.com/css2?family=Hedvig+Letters+Serif:opsz@12..24&family=Arimo:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/styles.css">
+<link rel="stylesheet" href="assets/css/styles.css?v=20260311-prose-1">
 </head>
 <body>
 <nav>
@@ -20,9 +20,48 @@
   <span class="nav-pill">by adilsultanx</span>
 </nav>
 
-<div class="land-hero">
-  <h1 class="land-title">AI KB ROI Calculator<br><em>Demo</em></h1>
-  <p class="land-sub">A short directional model for founder conversations.</p>
+<div class="land-intro">
+  <h2>Can AI mistakes really cost enterprises millions?</h2>
+  <div class="land-intro-focus">
+    <div class="land-stat-grid">
+      <div class="land-stat">
+        <div class="land-stat-k">~$4.4M</div>
+        <div class="land-stat-t">Average AI-risk loss reported by large enterprises (EY, 2025).</div>
+      </div>
+      <div class="land-stat">
+        <div class="land-stat-k">44% / 51%</div>
+        <div class="land-stat-t">Organizations reporting negative AI consequences (McKinsey 2024 / 2025).</div>
+      </div>
+      <div class="land-stat">
+        <div class="land-stat-k">€33M</div>
+        <div class="land-stat-t">Example OECD-documented AI-enabled fraud incident (2026 brief).</div>
+      </div>
+    </div>
+
+    <p class="land-intro-evidence">
+      <em class="ev-num">99%</em> of surveyed enterprises reported AI-related financial losses —
+      <em class="ev-num">64%</em> above $1M. AI incidents rose <em class="ev-num">56.4%</em> YoY
+      (233 cases in 2024). <em class="ev-num">30%</em> report inaccuracy consequences;
+      only <em class="ev-num">54%</em> actively mitigate them.
+    </p>
+
+    <div class="land-sources">
+      <a href="https://bmc-eygba.oss-cn-shanghai.aliyuncs.com/eygc/statics/2025/11/26/How-can-responsible-AI-bridge-the-gap-between-investment-and-impact.pdf" target="_blank" rel="noopener">EY Responsible AI Pulse (2025)</a>
+      <a href="https://www.mckinsey.com/capabilities/quantumblack/our-insights/the-state-of-ai-2024" target="_blank" rel="noopener">McKinsey State of AI (2024)</a>
+      <a href="https://www.mckinsey.com/~/media/mckinsey/business%20functions/quantumblack/our%20insights/the%20state%20of%20ai/november%202025/the-state-of-ai-2025-agents-innovation_cmyk-v1.pdf" target="_blank" rel="noopener">McKinsey State of AI (2025)</a>
+      <a href="https://hai.stanford.edu/ai-index/2025-ai-index-report/responsible-ai" target="_blank" rel="noopener">Stanford AI Index (2025)</a>
+      <a href="https://www.oecd.org/content/dam/oecd/en/publications/reports/2026/02/trends-in-ai-incidents-and-hazards-reported-by-the-media_7c824ca9/4f5ff43c-en.pdf" target="_blank" rel="noopener">OECD AI Incidents & Hazards (2026)</a>
+    </div>
+  </div>
+
+  <div class="intro-jump">
+    <a href="#broken-kb" class="jump-arrow" aria-label="Scroll to Broken KB ROI Calculator"></a>
+  </div>
+</div>
+
+<div class="land-hero" id="broken-kb">
+  <h1>Broken KB<br><em>ROI Calculator</em></h1>
+  <p class="land-sub">Convert AI issues to $ in a 15 minute call</p>
 
   <div class="vprops">
     <div class="vprop">
@@ -47,7 +86,9 @@
       </div>
     </div>
   </div>
+</div>
 
+<div class="land-cta-block" id="start-calc">
   <div class="cta-group">
     <a href="calculator.html" class="btn-primary">Open ROI Calculator</a>
     <button class="btn-secondary" id="copy-demo-btn" type="button" onclick="copyDemoLink()">Copy Demo Link</button>

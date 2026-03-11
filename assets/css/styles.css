@@ -223,6 +223,17 @@ input[type=range]::-webkit-slider-thumb {
 }
 .sanity-banner strong { color: var(--blue); font-weight: 600; }
 .sanity-banner span { color: var(--text); }
+.sanity-banner.low-confidence {
+  background: var(--red-dim);
+  border-color: rgba(248,113,113,0.28);
+  border-left-color: var(--red);
+  color: #fecaca;
+}
+.sanity-banner.low-confidence strong { color: #fee2e2; }
+.out-panel.low-confidence {
+  border-color: rgba(248,113,113,0.45);
+  box-shadow: inset 0 0 0 1px rgba(248,113,113,0.18);
+}
 
 /* ── WARNING BANNER ─────────────────────────────────────────── */
 .warn-banner {
@@ -369,7 +380,14 @@ input.auto-filled { border-color: var(--accent-border) !important; background: r
 /* ── RESPONSIVE ─────────────────────────────────────────────── */
 @media (max-width: 600px) {
   nav { padding: 16px 20px; }
+  .land-intro {
+    padding: 32px 20px 12px;
+    min-height: calc(100svh - 72px);
+  }
+  .land-stat-grid { grid-template-columns: 1fr; }
   .hero { padding: 48px 20px 36px; }
+  .land-hero { padding: 52px 20px 24px; }
+  .land-cta-block { padding: 44px 20px 48px; }
   .mode-wrap { padding: 24px 20px 0; }
   .wrap { padding: 24px 20px 60px; }
   .divider { margin: 0 20px; }
@@ -393,10 +411,112 @@ input.auto-filled { border-color: var(--accent-border) !important; background: r
    INDEX / LANDING PAGE styles
    ============================================================ */
 
+/* ── Landing intro (sources + evidence) ─────────────────────── */
+.land-intro {
+  max-width: 920px; margin: 0 auto;
+  padding: 48px 40px 32px;
+  min-height: calc(100svh - 82px);
+  display: flex;
+  flex-direction: column;
+}
+.land-intro-focus {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-top: -80px;
+}
+.land-intro-head {
+  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 12px;
+}
+.land-intro h2 {
+  font-family: 'Hedvig Letters Serif', serif;
+  font-size: clamp(28px, 4.5vw, 44px); font-weight: 400;
+  color: var(--text); line-height: 1.18; letter-spacing: -0.6px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.land-intro-sub {
+  font-size: 15px; color: var(--dim); line-height: 1.75;
+  max-width: 700px; margin-bottom: 22px;
+}
+.land-sources { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.land-sources a {
+  font-size: 12px; color: var(--dim);
+  text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+.land-sources a:hover { color: var(--accent); border-bottom-color: var(--accent-border); }
+
+/* ── Stat grid (3 cards) ────────────────────────────────────── */
+.land-stat-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+  margin-bottom: 14px;
+}
+.land-stat {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+}
+.land-stat-k {
+  font-family: 'Hedvig Letters Serif', serif;
+  font-size: 24px; line-height: 1; color: var(--accent);
+  margin-bottom: 6px;
+}
+.land-stat-t { font-size: 12px; color: var(--dim); line-height: 1.6; }
+
+/* ── Evidence prose ─────────────────────────────────────────── */
+.land-intro-evidence {
+  font-size: 13px; color: var(--dim); line-height: 1.8;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-left: 2px solid var(--accent-border);
+  background: var(--accent-dim);
+  border-radius: 0 8px 8px 0;
+}
+.ev-num {
+  font-style: normal;
+  color: var(--accent);
+  font-weight: 600;
+}
+.intro-jump {
+  display: flex; justify-content: center;
+  margin-top: 28px;
+  padding: 0 0 6px;
+}
+.jump-arrow {
+  width: 48px; height: 48px; border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: radial-gradient(circle at 30% 20%, rgba(93,158,255,0.18), rgba(13,17,23,0.92));
+  box-shadow: 0 0 0 1px rgba(93,158,255,0.12), 0 8px 24px rgba(0,0,0,0.35);
+  position: relative; text-decoration: none;
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+}
+.jump-arrow::before,
+.jump-arrow::after {
+  content: '';
+  position: absolute; left: 50%;
+  width: 10px; height: 10px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: translateX(-50%) rotate(45deg);
+}
+.jump-arrow::before { top: 15px; animation: arrowPulse 1.6s ease-in-out infinite; }
+.jump-arrow::after  { top: 22px; opacity: 0.7; animation: arrowPulse 1.6s ease-in-out infinite .2s; }
+.jump-arrow:hover {
+  transform: translateY(2px);
+  border-color: rgba(93,158,255,0.5);
+  box-shadow: 0 0 0 1px rgba(93,158,255,0.2), 0 10px 26px rgba(0,0,0,0.42);
+}
+@keyframes arrowPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
 /* ── Landing hero ───────────────────────────────────────────── */
 .land-hero {
   max-width: 760px; margin: 0 auto;
-  padding: 96px 40px 64px; text-align: center;
+  padding: 72px 40px 44px; text-align: center;
+  scroll-margin-top: 88px;
 }
 .land-title {
   font-family: 'Hedvig Letters Serif', serif;
@@ -427,8 +547,20 @@ input.auto-filled { border-color: var(--accent-border) !important; background: r
 .vprop-text strong { display: block; font-size: 14px; color: var(--text); font-weight: 600; margin-bottom: 3px; }
 .vprop-text span   { font-size: 12px; color: var(--dim); line-height: 1.5; }
 
+/* ── Scroll cue + lower CTA ─────────────────────────────────── */
+.scroll-cue {
+  display: inline-flex; margin-top: 6px;
+  font-size: 12px; color: var(--dim2); text-decoration: none;
+  border-bottom: 1px solid rgba(255,255,255,0.14); padding-bottom: 2px;
+}
+.scroll-cue:hover { color: var(--accent); border-bottom-color: var(--accent-border); }
+.land-cta-block {
+  max-width: 760px; margin: 0 auto;
+  padding: 72px 40px 58px;
+}
+
 /* ── CTA buttons ────────────────────────────────────────────── */
-.cta-group { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 52px; }
+.cta-group { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 0; }
 .btn-primary {
   background: var(--accent); color: var(--bg);
   font-family: 'Arimo', sans-serif; font-size: 15px; font-weight: 700;
